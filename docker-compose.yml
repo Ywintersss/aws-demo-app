@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: aethelgard
+      POSTGRES_USER: aethelgard
+      POSTGRES_PASSWORD: aethelgard
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aethelgard']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - aethelgard-postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: dev
+    environment:
+      DATABASE_URL: postgresql://aethelgard:aethelgard@postgres:5432/aethelgard
+      JWT_SECRET: dev-only-secret-change-me
+      IDENTITY_DRIVER: local
+      PORT: '3000'
+      LOG_LEVEL: info
+    ports:
+      - '3000:3000'
+      - '9229:9229'
+    volumes:
+      - .:/app
+      - aethelgard-api-node-modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: dev
+    environment:
+      VITE_API_PROXY_TARGET: http://api:3000
+    ports:
+      - '5173:5173'
+    volumes:
+      - .:/app
+      - aethelgard-web-node-modules:/app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  aethelgard-postgres-data:
+  aethelgard-api-node-modules:
+  aethelgard-web-node-modules:
