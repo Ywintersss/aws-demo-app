@@ -55,7 +55,7 @@ const formatDOB = (iso: string): string => {
 	});
 };
 
-	export const PatientDetailPage = (): JSX.Element => {
+export const PatientDetailPage = (): JSX.Element => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const [patient, setPatient] = useState<Patient | null>(null);
@@ -84,7 +84,9 @@ const formatDOB = (iso: string): string => {
 				setLoadError("Patient not found — the record may have been deleted.");
 			} else {
 				setPatient(null);
-				setLoadError("Could not load this patient. Check the network and try again.");
+				setLoadError(
+					"Could not load this patient. Check the network and try again.",
+				);
 			}
 		} finally {
 			setLoading(false);
@@ -108,7 +110,9 @@ const formatDOB = (iso: string): string => {
 			await reload();
 		} catch (error) {
 			setFormError(
-				error instanceof Error ? error.message : "Could not open the encounter.",
+				error instanceof Error
+					? error.message
+					: "Could not open the encounter.",
 			);
 		}
 	};

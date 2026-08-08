@@ -18,23 +18,25 @@ const branchClass = (mrn: string): string => {
 };
 
 export const PatientsPage = (): JSX.Element => {
-const [search, setSearch] = useState("");
-const [page, setPage] = useState<Page<Patient> | null>(null);
-const [loadError, setLoadError] = useState<string | null>(null);
-const [formError, setFormError] = useState<string | null>(null);
-const [creating, setCreating] = useState(false);
-const [form, setForm] = useState({
-name: "",
-dob: "",
-sex: "unknown",
-phone: "",
-});
+	const [search, setSearch] = useState("");
+	const [page, setPage] = useState<Page<Patient> | null>(null);
+	const [loadError, setLoadError] = useState<string | null>(null);
+	const [formError, setFormError] = useState<string | null>(null);
+	const [creating, setCreating] = useState(false);
+	const [form, setForm] = useState({
+		name: "",
+		dob: "",
+		sex: "unknown",
+		phone: "",
+	});
 
 	const reload = async (): Promise<void> => {
 		const query = new URLSearchParams({ search, page: "1", pageSize: "20" });
 		setLoadError(null);
 		try {
-			setPage(await apiFetch<Page<Patient>>(`/api/patients?${query.toString()}`));
+			setPage(
+				await apiFetch<Page<Patient>>(`/api/patients?${query.toString()}`),
+			);
 		} catch {
 			setLoadError("Could not load the registry. Check the network.");
 		}
@@ -62,7 +64,9 @@ phone: "",
 			setSearch("");
 		} catch (error) {
 			setFormError(
-				error instanceof Error ? error.message : "Could not create the patient.",
+				error instanceof Error
+					? error.message
+					: "Could not create the patient.",
 			);
 		} finally {
 			setCreating(false);
@@ -179,7 +183,11 @@ phone: "",
 							/>
 						</label>
 						<span className="field" aria-hidden="true" />
-						<button type="submit" className="btn btn-primary" disabled={creating}>
+						<button
+							type="submit"
+							className="btn btn-primary"
+							disabled={creating}
+						>
 							{creating ? "Creating…" : "Create"}
 						</button>
 					</div>
