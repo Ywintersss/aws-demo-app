@@ -3,16 +3,45 @@ import { buildServer, type ServerDeps } from '../../src/http/server.js';
 import { setForcedUnhealthy } from '../../src/http/healthState.js';
 import type { Db } from '../../src/adapters/persistence/postgres/pool.js';
 import type { AuthProvider } from '../../src/ports/index.js';
+import { createMemoryBranchRepository } from '../../src/adapters/persistence/memory/branchRepository.js';
+import { createMemoryPatientRepository } from '../../src/adapters/persistence/memory/patientRepository.js';
+import { createMemoryEncounterRepository } from '../../src/adapters/persistence/memory/encounterRepository.js';
+import { createMemoryObservationRepository } from '../../src/adapters/persistence/memory/observationRepository.js';
+import { createPatientService } from '../../src/services/patientService.js';
+import { createEncounterService } from '../../src/services/encounterService.js';
+import { createObservationService } from '../../src/services/observationService.js';
+import { createAuthService } from '../../src/services/authService.js';
 
 const PRINCIPAL = { userId: 'user-1', email: 'doc@aethelgard.demo', role: 'doctor' as const, branchId: 'branch-1' };
 
-const buildDeps = (overrides: Partial<ServerDeps> = {}): ServerDeps => ({
-  db: { query: vi.fn(async () => ({ rows: [], rowCount: 0 })), close: vi.fn(), pool: {} } as unknown as Db,
-  authProvider: {
+// This file only exercises the server-core concerns (health/meta/error translation/headers)
+// that predate the route modules added in Task 11 — the route-specific test files
+// (routes.*.test.ts) cover patients/encounters/observations/auth/admin directly.
+// ServerDeps requires those four services regardless, so they're built here from the
+// same in-memory adapters testServer.ts uses, just never exercised by this file's assertions.
+const newId = (() => {
+  let n = 0;
+  return () => `server-test-${(n += 1)}`;
+})();
+const now = () => '2026-08-07T12:00:00.000Z';
+const buildUnusedServices = (authProvider: AuthProvider) => ({
+  patients: createPatientService({ patients: createMemoryPatientRepository(), branches: createMemoryBranchRepository(), now, newId }),
+  encounters: createEncounterService({ encounters: createMemoryEncounterRepository(), now, newId }),
+  observations: createObservationService({ observations: createMemoryObservationRepository(), now, newId }),
+  auth: createAuthService({ authProvider }),
+});
+
+const buildDeps = (overrides: Partial<ServerDeps> = {}): ServerDeps => {
+  const authProvider = {
     login: vi.fn(),
     verify: vi.fn(async (token: string) => (token === 'valid-token' ? PRINCIPAL : null)),
     listDemoUsers: vi.fn(),
-  } as unknown as AuthProvider,
+  } as unknown as AuthProvider;
+
+  return {
+  db: { query: vi.fn(async () => ({ rows: [], rowCount: 0 })), close: vi.fn(), pool: {} } as unknown as Db,
+  authProvider,
+  ...buildUnusedServices(authProvider),
   instanceId: 'test-instance-1',
   availabilityZone: 'test-az-1',
   appVersion: '0.1.0-test',
@@ -20,7 +49,8 @@ const buildDeps = (overrides: Partial<ServerDeps> = {}): ServerDeps => ({
   identityDriverName: 'local',
   serveStatic: false,
   ...overrides,
-});
+  };
+};
 
 describe('GET /health', () => {
   it('returns 200 when the database is reachable', async () => {
