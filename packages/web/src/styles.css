@@ -1,0 +1,1102 @@
+/* ============================================================
+   Aethelgard — the ward operations board
+   The hospital whiteboard, translated to screen: a surface
+   everyone reads, nobody owns, always being written on.
+   Structure in near-black marker over warm enamel white;
+   one clinical green for the actions that commit; marker
+   colors carry status and nothing else.
+   ============================================================ */
+
+/* Kalam (300/400/700) is loaded from Google Fonts via <link> in
+   index.html. Two cuts are used: 400 (board lettering) and 700 (titles). */
+
+/* ---------- tokens ---------- */
+
+:root {
+	/* surface */
+	--ground: #f2f0e6;
+	--paper: #fdfbf5;
+	--paper-2: #efede3;
+	--panel-shadow:
+		0 1px 0 rgba(66, 62, 48, 0.06), 0 10px 24px -18px rgba(66, 62, 48, 0.25);
+
+	/* ink */
+	--ink: #26241f;
+	--ink-2: #6b655a;
+	--ink-3: #6f6a5a;
+
+	/* structure */
+	--rule: #e4e0d2;
+	--rule-strong: #cbc4b0;
+	--focus: #1f6d4c;
+
+	/* action — one clinical green. the marker the board is written with. */
+	--accent: #1d7a5c;
+	--accent-deep: #165f48;
+	--accent-hover: #16624a;
+	--accent-ink: #f6f8f3;
+
+	/* status markers — reserved for state, never decoration */
+	--open: #1f7a4c; /* encounter open / healthy */
+	--done: #27527f; /* discharged / delivered */
+	--warn: #96631a; /* amber / burning */
+	--danger: #b23a2c; /* cancelled / unhealthy / error */
+	--neutral: #8c8572;
+
+	/* branch magnets — KL, PG, JB as reusable tags */
+	--branch-kl: #1f7a4c;
+	--branch-pg: #27527f;
+	--branch-jb: #8f5f1c;
+
+	/* type */
+	--font-hand: "Kalam", "Segoe Print", "Comic Sans MS", cursive;
+	--font-body:
+		system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+		sans-serif;
+	--font-data:
+		ui-monospace, "SF Mono", "Cascadia Mono", "Liberation Mono", Menlo,
+		Consolas, monospace;
+
+	--radius: 3px;
+	--radius-lg: 8px;
+
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------- base ---------- */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	font-family: var(--font-body);
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--ink);
+	background: var(--ground);
+	background-image:
+		radial-gradient(
+			ellipse 120% 60% at 50% -10%,
+			rgba(255, 255, 255, 0.7),
+			transparent 60%
+		),
+		linear-gradient(180deg, #f6f4ee 0%, var(--board) 100%);
+	min-height: 100vh;
+	-webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+	margin: 0;
+	font-family: var(--font-hand);
+	font-weight: 700;
+	line-height: 1.1;
+	letter-spacing: 0.01em;
+	color: var(--ink);
+}
+
+a {
+	color: var(--accent);
+}
+
+:focus-visible {
+	outline: 3px solid var(--focus, #2f7d5a);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+::selection {
+	background: #cfe6d8;
+}
+
+/* ---------- shell ---------- */
+
+.app {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+.app-main {
+	flex: 1;
+	padding: 0 20px 48px;
+}
+
+.board-wrap {
+	max-width: 880px;
+	margin: 0 auto;
+}
+
+/* ---------- top rail ---------- */
+
+.rail {
+	position: sticky;
+	top: 0;
+	z-index: 40;
+	background: rgba(242, 240, 230, 0.92);
+	backdrop-filter: blur(8px);
+	border-bottom: 1px solid var(--rule-strong);
+}
+
+.rail-inner {
+	max-width: 880px;
+	margin: 0 auto;
+	display: flex;
+	align-items: flex-end;
+	gap: 28px;
+	padding: 12px 20px;
+}
+
+.brand {
+	display: flex;
+	flex-direction: column;
+	line-height: 1;
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.brand-name {
+	font-family: var(--font-hand);
+	font-size: 1.55rem;
+	font-weight: 700;
+}
+
+.brand-sub {
+	font-size: 0.62rem;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+	margin-top: 3px;
+	font-weight: 600;
+}
+
+.rail-nav {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+}
+
+.rail-link {
+	font-family: var(--font-hand);
+	font-size: 1.12rem;
+	color: var(--ink-2);
+	text-decoration: none;
+	padding: 4px 12px 6px;
+	border-radius: var(--radius);
+	border: 1.5px solid transparent;
+	transition:
+		color 160ms var(--ease-out),
+		background 160ms var(--ease-out);
+}
+
+.rail-link:hover {
+	color: var(--ink);
+	background: rgba(255, 255, 255, 0.6);
+}
+
+.rail-link.active {
+	color: var(--accent-deep, #135d48);
+	background: #e8efe9;
+}
+
+.rail-spacer {
+	flex: 1;
+}
+
+.rail-user {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 0.83rem;
+	color: var(--ink-2);
+	white-space: nowrap;
+}
+
+.user-role {
+	font-family: var(--font-data);
+	font-size: 0.72rem;
+	letter-spacing: 0.04em;
+	color: var(--ink-3);
+	border: 1px solid var(--rule-strong);
+	border-radius: 99px;
+	padding: 2px 9px;
+	text-transform: lowercase;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+	font-family: inherit;
+	font-size: 0.92rem;
+	font-weight: 600;
+	border-radius: var(--radius);
+	padding: 9px 16px;
+	border: 1.5px solid var(--rule-strong);
+	background: var(--paper);
+	color: var(--ink);
+	cursor: pointer;
+	transition:
+		transform 110ms var(--ease-out),
+		box-shadow 110ms var(--ease-out),
+		background 150ms var(--ease-out),
+		border-color 150ms var(--ease-out),
+		color 150ms var(--ease-out);
+}
+
+.btn:hover:not(:disabled) {
+	border-color: var(--ink-3);
+	background: #ffffff;
+}
+
+.btn:active:not(:disabled) {
+	transform: translateY(1px);
+}
+
+.btn:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.btn-primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+	background: var(--accent-hover);
+	border-color: var(--accent-hover);
+}
+
+.btn-danger {
+	background: transparent;
+	border-color: var(--danger);
+	color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+	background: #f6e3e0;
+}
+
+.btn-line {
+	background: transparent;
+}
+
+/* ---------- board panels ---------- */
+
+.board {
+	background: var(--paper);
+	border: 1px solid var(--rule);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--panel-shadow);
+}
+
+.board-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 22px 26px 0;
+}
+
+.board-title {
+	font-family: var(--font-hand);
+	font-size: 2rem;
+	font-weight: 700;
+	color: var(--ink);
+}
+
+.board-title small {
+	font-family: var(--font-body);
+	font-size: 0.78rem;
+	font-weight: 500;
+	color: var(--ink-3);
+	letter-spacing: 0.02em;
+	margin-left: 10px;
+}
+
+.board-body {
+	padding: 18px 26px 24px;
+}
+
+.board-subtitle {
+	font-family: var(--font-hand);
+	font-size: 1.3rem;
+	font-weight: 400;
+	color: var(--ink);
+	margin: 22px 0 10px;
+}
+
+.board-subtitle-note {
+	font-family: var(--font-body);
+	font-weight: 500;
+	font-size: 0.78rem;
+	color: var(--ink-3);
+	margin-left: 8px;
+}
+
+.board-subtitle:first-child {
+	margin-top: 0;
+}
+
+.board-hint {
+	font-size: 0.85rem;
+	color: var(--ink-3);
+	margin: 0 0 12px;
+}
+
+.board-head-search {
+	min-width: 260px;
+}
+
+@media (max-width: 720px) {
+	.board-head-search {
+		min-width: 100%;
+	}
+}
+.rule-bar {
+	height: 1px;
+	background: var(--rule);
+	margin: 22px 0 18px;
+}
+
+/* ---------- fields ---------- */
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	font-size: 0.82rem;
+	font-weight: 600;
+	color: var(--ink-2);
+	letter-spacing: 0.02em;
+}
+
+.input,
+.select {
+	font-family: inherit;
+	font-size: 0.95rem;
+	color: var(--ink);
+	padding: 9px 12px;
+	background: var(--paper);
+	border: 1.5px solid var(--rule-strong);
+	border-radius: var(--radius);
+	transition:
+		border-color 150ms var(--ease-out),
+		box-shadow 150ms var(--ease-out);
+}
+
+.input::placeholder {
+	color: var(--ink-3);
+}
+
+.input:focus,
+.select:focus {
+	outline: none;
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px rgba(29, 122, 92, 0.15);
+}
+
+.field-grid {
+	display: grid;
+	gap: 14px;
+}
+
+.field-grid > .field,
+.field-grid > .btn {
+	min-width: 0;
+}
+
+.field-grid.cols-2 {
+	grid-template-columns: 1fr 1fr;
+}
+
+.field-grid.cols-4 {
+	grid-template-columns: 2fr 1fr 1fr 1.4fr;
+}
+
+/* inline form row */
+.form-row {
+	display: flex;
+	gap: 10px;
+	align-items: flex-end;
+	flex-wrap: wrap;
+}
+
+.form-row .field {
+	flex: 1 1 140px;
+}
+
+.form-row .btn {
+	flex: 0 0 auto;
+}
+
+/* ---------- ledger rows (patients / encounters) ---------- */
+
+.ledger {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border-top: 1px solid var(--rule);
+}
+
+.ledger-row {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 13px 4px;
+	border-bottom: 1px solid var(--rule);
+	text-decoration: none;
+	color: var(--ink);
+	transition:
+		background 130ms var(--ease-out),
+		transform 130ms var(--ease-out);
+}
+
+a.ledger-row:hover {
+	background: var(--paper-2);
+	transform: translateX(4px);
+}
+
+.ledger-main {
+	min-width: 0;
+}
+
+.ledger-name {
+	font-family: var(--font-hand);
+	font-size: 1.06rem;
+	font-weight: 400;
+	line-height: 1.35;
+}
+
+.ledger-meta {
+	font-size: 0.8rem;
+	color: var(--ink-2);
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+	margin-top: 2px;
+}
+
+.ledger-meta code,
+.ledger-meta .lived-meta {
+	font-size: 0.8rem;
+	color: var(--ink-3);
+}
+
+.ledger-meta code {
+	font-family: var(--font-data);
+	background: var(--paper-2);
+	border: 1px solid var(--rule);
+	border-radius: 3px;
+	padding: 1px 6px;
+}
+
+.ledger-arrow {
+	margin-left: auto;
+	color: var(--ink-3);
+	font-size: 1.1rem;
+	flex: 0 0 auto;
+}
+
+/* status dot — the small marker that carries state */
+.dot {
+	display: inline-block;
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	flex: 0 0 auto;
+}
+
+.dot.open {
+	background: var(--open);
+}
+.dot.discharged {
+	background: var(--done);
+}
+.dot.cancelled {
+	background: var(--danger);
+}
+.dot.pending {
+	background: var(--warn);
+}
+
+/* status chip — dot + word, used on detail surfaces */
+.status {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--ink-2);
+}
+
+.status .label {
+	font-family: var(--font-hand);
+	text-transform: lowercase;
+	font-weight: 400;
+}
+
+/* branch tag */
+.branch-tag {
+	font-family: var(--font-data);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	padding: 2px 8px;
+	border-radius: 2px;
+	color: var(--accent-ink);
+}
+
+.branch-tag.kl {
+	background: var(--branch-kl);
+}
+.branch-tag.pg {
+	background: var(--branch-pg);
+}
+.branch-tag.jb {
+	background: var(--branch-jb);
+}
+
+.mrn {
+	font-family: var(--font-data);
+	font-size: 0.8rem;
+	color: var(--ink-2);
+}
+
+/* ---------- table (observations) ---------- */
+
+.table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.92rem;
+}
+
+.table th {
+	font-family: var(--font-data);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-3);
+	text-align: left;
+	padding: 8px 10px;
+	border-bottom: 1.5px solid var(--rule-strong);
+}
+
+.table td {
+	padding: 11px 10px;
+	border-bottom: 1px solid var(--rule);
+	vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.td-value {
+	font-family: var(--font-data);
+	font-size: 0.95rem;
+	font-weight: 600;
+}
+
+.td-code {
+	color: var(--ink-2);
+}
+
+/* ---------- infra ---------- */
+
+.magnet-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 12px;
+}
+
+.magnet {
+	background: var(--paper);
+	border: 1px solid var(--rule);
+	border-radius: var(--radius);
+	box-shadow: inset 0 3px 0 var(--ink-3);
+	padding: 12px 14px;
+}
+
+.magnet.warn {
+	box-shadow: inset 0 3px 0 var(--warn);
+}
+
+.magnet.dead {
+	box-shadow: inset 0 3px 0 var(--danger);
+}
+
+.magnet-id {
+	font-family: var(--font-data);
+	font-size: 0.78rem;
+	word-break: break-all;
+	color: var(--ink);
+}
+
+.magnet-stat {
+	font-size: 0.8rem;
+	color: var(--ink-2);
+	margin-top: 2px;
+}
+
+/* the tally — distribution as ruled marks */
+.tally {
+	display: grid;
+	gap: 8px;
+	margin: 6px 0 2px;
+}
+
+.tally-line {
+	display: grid;
+	grid-template-columns: 190px 1fr 44px;
+	align-items: baseline;
+	gap: 12px;
+}
+
+.tally-id {
+	font-family: var(--font-data);
+	font-size: 0.74rem;
+	color: var(--ink-2);
+	word-break: break-all;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tally-track {
+	position: relative;
+	height: 14px;
+	border-bottom: 1.5px solid var(--rule-strong);
+}
+
+.tally-fill {
+	position: absolute;
+	inset: 0 auto 0 0;
+	background: repeating-linear-gradient(
+		90deg,
+		var(--ink-2) 0 2px,
+		transparent 2px 5px
+	);
+	opacity: 0.85;
+}
+
+.tally-count {
+	font-family: var(--font-data);
+	font-size: 0.78rem;
+	text-align: right;
+	color: var(--ink-2);
+}
+
+/* ---------- alerts & states ---------- */
+
+.alert {
+	border-radius: var(--radius);
+	padding: 10px 14px;
+	font-size: 0.88rem;
+	font-weight: 600;
+	border: 1px solid transparent;
+	margin: 0 0 14px;
+}
+
+.alert-danger {
+	background: #f7e4e1;
+	border-color: #e3b8b2;
+	color: var(--danger);
+}
+
+.alert-warn {
+	background: #f7efd9;
+	border-color: #e5d49a;
+	color: #7a5900;
+}
+
+/* empty state — the board cleared for the shift */
+.empty {
+	padding: 34px 0 26px;
+	text-align: center;
+	color: var(--ink-3);
+}
+
+.empty-line {
+	font-family: var(--font-hand);
+	font-size: 1.25rem;
+	color: var(--ink-2);
+	margin: 0 0 4px;
+}
+
+.empty-sub {
+	font-size: 0.85rem;
+}
+
+/* loading skeleton — the board being written */
+.skeleton {
+	position: relative;
+	overflow: hidden;
+	min-height: 120px;
+}
+
+.skeleton::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		100deg,
+		transparent 30%,
+		rgba(255, 255, 255, 0.7) 50%,
+		transparent 70%
+	);
+	transform: translateX(-100%);
+	animation: boardwrite 1.3s ease-in-out infinite;
+}
+
+@keyframes boardwrite {
+	to {
+		transform: translateX(100%);
+	}
+}
+
+.loading-line {
+	font-family: var(--font-hand);
+	font-size: 1.15rem;
+	color: var(--ink-3);
+	padding: 30px;
+	text-align: center;
+}
+
+/* ---------- sticky notes (login accounts) ---------- */
+
+.sticky-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 12px;
+	margin-top: 4px;
+}
+
+.sticky {
+	appearance: none;
+	font-family: var(--font-hand);
+	text-align: left;
+	border: none;
+	cursor: pointer;
+	border-radius: 2px;
+	padding: 12px 14px 11px;
+	color: #3a3526;
+	box-shadow: 0 7px 16px -10px rgba(60, 52, 30, 0.5);
+	transition:
+		transform 120ms var(--ease-out),
+		box-shadow 120ms var(--ease-out),
+		filter 120ms var(--ease-out);
+	transform: rotate(-0.6deg);
+}
+
+.sticky:hover {
+	transform: translateY(-2px) rotate(-0.3deg);
+	box-shadow: 0 12px 22px -12px rgba(60, 52, 30, 0.55);
+	filter: saturate(1.08);
+}
+
+.sticky:active {
+	transform: translateY(0) rotate(0);
+}
+
+.sticky.bg-a {
+	background: #f5e6a8;
+}
+.sticky.bg-b {
+	background: #d9e8c8;
+}
+.sticky.bg-c {
+	background: #cfe0e8;
+}
+
+.sticky-name {
+	font-family: var(--font-hand);
+	font-size: 1.08rem;
+	font-weight: 400;
+	line-height: 1.25;
+}
+
+.sticky-meta {
+	font-size: 0.78rem;
+	opacity: 0.72;
+	margin-top: 3px;
+	font-family: var(--font-body);
+	font-weight: 600;
+}
+
+.sticky.selected {
+	outline: 3px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* ---------- login ---------- */
+
+.login-board {
+	max-width: 640px;
+	margin: 40px auto 0;
+}
+
+.login-title {
+	font-family: var(--font-hand);
+	font-size: 2.4rem;
+	font-weight: 700;
+	color: var(--ink);
+	margin: 0 0 4px;
+}
+
+.login-lede {
+	color: var(--ink-2);
+	margin: 0 0 22px;
+	font-size: 1rem;
+}
+
+.login-fields {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+	margin-top: 20px;
+}
+
+.login-actions {
+	margin-top: 18px;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+/* ---------- footer stamp ---------- */
+
+.stamp-footer {
+	border-top: 1px solid var(--rule-strong);
+	padding: 12px 20px 34px;
+	margin-top: 0;
+}
+
+.stamp-inner {
+	max-width: 880px;
+	margin: 0 auto;
+	display: inline-flex;
+	justify-content: center;
+	gap: 8px;
+	font-family: var(--font-data);
+	font-size: 0.74rem;
+	letter-spacing: 0.03em;
+	color: var(--ink-3);
+	border: 1.5px dashed var(--rule-strong);
+	border-radius: 6px;
+	padding: 7px 18px;
+}
+
+.stamp-inner strong {
+	color: var(--ink-2);
+	font-weight: 700;
+}
+
+.stamp-holder {
+	display: flex;
+	justify-content: center;
+}
+
+/* ---------- misc ---------- */
+
+.back-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.88rem;
+	font-weight: 600;
+	color: var(--ink-2);
+	text-decoration: none;
+	margin-bottom: 14px;
+	transition: color 140ms var(--ease-out);
+}
+
+.back-link:hover {
+	color: var(--accent);
+}
+
+.meta-line {
+	font-size: 0.88rem;
+	color: var(--ink-2);
+	margin: 2px 0 0;
+}
+
+.meta-line.status-line {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.status-line .label {
+	font-family: var(--font-hand);
+	text-transform: lowercase;
+	font-weight: 400;
+}
+
+.status-line .discharge-btn {
+	margin-left: 12px;
+}
+
+.meta-line code {
+	font-family: var(--font-data);
+	font-size: 0.82rem;
+	background: var(--paper-2);
+	border: 1px solid var(--rule);
+	border-radius: 3px;
+	padding: 1px 6px;
+	color: var(--ink);
+}
+
+.live-pulse {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--open);
+	margin-right: 8px;
+	vertical-align: baseline;
+}
+
+/* one authored motion: the board settling when content lands */
+.board {
+	animation: settle 420ms var(--ease-out) both;
+}
+
+@keyframes settle {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* the stamp gesture: committing an action inks the control down,
+   then lets it ring out. one authored moment, nothing scattered. */
+.btn-primary,
+.btn-danger {
+	transition:
+		transform 110ms var(--ease-out),
+		box-shadow 110ms var(--ease-out),
+		background 150ms var(--ease-out),
+		border-color 150ms var(--ease-out),
+		color 150ms var(--ease-out),
+		opacity 150ms var(--ease-out);
+}
+
+.btn-primary:active:not(:disabled),
+.btn-danger:active:not(:disabled) {
+	transform: scale(0.97);
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 880px) {
+	.field-grid.cols-4 {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+@media (max-width: 720px) {
+	.rail-inner {
+		flex-wrap: wrap;
+		gap: 10px 18px;
+		padding: 10px 16px;
+	}
+
+	.rail-link {
+		min-height: 44px;
+		align-items: center;
+	}
+
+	.input,
+	.select,
+	.btn {
+		min-height: 44px;
+	}
+
+	.sticky {
+		min-height: 44px;
+	}
+	.rail-spacer {
+		display: none;
+	}
+
+	.rail-user {
+		width: 100%;
+		order: 3;
+		font-size: 0.8rem;
+	}
+
+	.brand-name {
+		font-size: 1.35rem;
+	}
+
+	.app-main {
+		padding: 0 14px 36px;
+	}
+
+	.board-head {
+		flex-direction: column;
+		align-items: flex-start;
+		padding: 18px 18px 0;
+		gap: 6px;
+	}
+
+	.board-title {
+		font-size: 1.6rem;
+	}
+
+	.board-body {
+		padding: 16px 18px 20px;
+	}
+
+	.field-grid.cols-2,
+	.field-grid.cols-4,
+	.login-fields {
+		grid-template-columns: 1fr;
+	}
+
+	.tally-line {
+		grid-template-columns: 120px 1fr 40px;
+		gap: 8px;
+	}
+
+	.sticky-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.login-board {
+		margin-top: 26px;
+	}
+}
+
+@media (max-width: 460px) {
+	.sticky-grid {
+		grid-template-columns: 1fr;
+	}
+	.rail-nav {
+		gap: 2px;
+	}
+	.rail-link {
+		font-size: 1rem;
+		padding: 12px 9px 13px;
+		display: flex;
+	}
+}
