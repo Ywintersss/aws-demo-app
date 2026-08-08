@@ -21,7 +21,7 @@ export const TEST_PRINCIPAL = {
 export const AUTH_HEADER = { authorization: 'Bearer valid-token' };
 
 /** Real services over in-memory adapters, so route tests exercise real validation and business rules — only the AuthProvider and Db are faked. */
-export const buildTestServer = () => {
+export const buildTestServer = async () => {
   let sequence = 0;
   const newId = () => `id-${(sequence += 1)}`;
   const now = () => '2026-08-07T12:00:00.000Z';
@@ -54,5 +54,5 @@ export const buildTestServer = () => {
     auth: createAuthService({ authProvider }),
   };
 
-  return { app: buildServer(deps), deps };
+  return { app: await buildServer(deps), deps };
 };

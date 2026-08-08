@@ -45,7 +45,7 @@ export const buildApplication = async (
     identity.availabilityZone(),
   ]);
 
-  const server = buildServer({
+  const server = await buildServer({
     db,
     authProvider,
     patients: createPatientService({ patients: patientsRepo, branches, now, newId }),

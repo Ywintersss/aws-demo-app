@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTestServer, AUTH_HEADER } from './testServer.js';
 
-const createPatient = async (app: ReturnType<typeof buildTestServer>['app']) =>
+const createPatient = async (app: Awaited<ReturnType<typeof buildTestServer>>['app']) =>
   app
     .inject({
       method: 'POST', url: '/api/patients', headers: AUTH_HEADER,
@@ -11,7 +11,7 @@ const createPatient = async (app: ReturnType<typeof buildTestServer>['app']) =>
 
 describe('encounter and observation routes', () => {
   it('POST /api/patients/:id/encounters creates an encounter for that patient', async () => {
-    const { app } = buildTestServer();
+    const { app } = await buildTestServer();
     const patient = await createPatient(app);
     const response = await app.inject({
       method: 'POST', url: `/api/patients/${patient.id}/encounters`, headers: AUTH_HEADER,
@@ -22,7 +22,7 @@ describe('encounter and observation routes', () => {
   });
 
   it('GET /api/patients/:id/encounters lists them', async () => {
-    const { app } = buildTestServer();
+    const { app } = await buildTestServer();
     const patient = await createPatient(app);
     await app.inject({
       method: 'POST', url: `/api/patients/${patient.id}/encounters`, headers: AUTH_HEADER,
@@ -33,7 +33,7 @@ describe('encounter and observation routes', () => {
   });
 
   it('PATCH /api/encounters/:id discharges an encounter', async () => {
-    const { app } = buildTestServer();
+    const { app } = await buildTestServer();
     const patient = await createPatient(app);
     const encounter = await app
       .inject({ method: 'POST', url: `/api/patients/${patient.id}/encounters`, headers: AUTH_HEADER, payload: { type: 'inpatient', department: 'Cardiology' } })
@@ -45,7 +45,7 @@ describe('encounter and observation routes', () => {
   });
 
   it('POST /api/encounters/:id/observations records an observation stamped with the caller', async () => {
-    const { app, deps } = buildTestServer();
+    const { app, deps } = await buildTestServer();
     const patient = await createPatient(app);
     const encounter = await app
       .inject({ method: 'POST', url: `/api/patients/${patient.id}/encounters`, headers: AUTH_HEADER, payload: { type: 'outpatient', department: 'General' } })
@@ -60,7 +60,7 @@ describe('encounter and observation routes', () => {
   });
 
   it('GET /api/encounters/:id/observations lists them oldest first', async () => {
-    const { app } = buildTestServer();
+    const { app } = await buildTestServer();
     const patient = await createPatient(app);
     const encounter = await app
       .inject({ method: 'POST', url: `/api/patients/${patient.id}/encounters`, headers: AUTH_HEADER, payload: { type: 'outpatient', department: 'General' } })

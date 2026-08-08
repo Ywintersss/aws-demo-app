@@ -54,13 +54,13 @@ const buildDeps = (overrides: Partial<ServerDeps> = {}): ServerDeps => {
 
 describe('GET /health', () => {
   it('returns 200 when the database is reachable', async () => {
-    const app = buildServer(buildDeps());
+    const app = await buildServer(buildDeps());
     const response = await app.inject({ method: 'GET', url: '/health' });
     expect(response.statusCode).toBe(200);
   });
 
   it('returns 503 when the database query throws', async () => {
-    const app = buildServer(
+    const app = await buildServer(
       buildDeps({ db: { query: vi.fn(async () => { throw new Error('down'); }), close: vi.fn(), pool: {} } as unknown as Db }),
     );
     const response = await app.inject({ method: 'GET', url: '/health' });
@@ -68,7 +68,7 @@ describe('GET /health', () => {
   });
 
   it('returns 503 when forced unhealthy, and recovers when un-forced', async () => {
-    const app = buildServer(buildDeps());
+    const app = await buildServer(buildDeps());
     setForcedUnhealthy(true);
     expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(503);
     setForcedUnhealthy(false);
@@ -78,7 +78,7 @@ describe('GET /health', () => {
 
 describe('every response', () => {
   it('carries X-Served-By and X-AZ headers from the resolved instance identity', async () => {
-    const app = buildServer(buildDeps());
+    const app = await buildServer(buildDeps());
     const response = await app.inject({ method: 'GET', url: '/health' });
     expect(response.headers['x-served-by']).toBe('test-instance-1');
     expect(response.headers['x-az']).toBe('test-az-1');
@@ -87,12 +87,12 @@ describe('every response', () => {
 
 describe('GET /api/meta', () => {
   it('requires authentication', async () => {
-    const app = buildServer(buildDeps());
+    const app = await buildServer(buildDeps());
     expect((await app.inject({ method: 'GET', url: '/api/meta' })).statusCode).toBe(401);
   });
 
   it('reports instance identity, version and active adapters when authenticated', async () => {
-    const app = buildServer(buildDeps());
+    const app = await buildServer(buildDeps());
     const response = await app.inject({
       method: 'GET',
       url: '/api/meta',
@@ -112,7 +112,7 @@ describe('GET /api/meta', () => {
 
 describe('error translation', () => {
   it('returns 404 with a machine-readable code for an unknown route', async () => {
-    const app = buildServer(buildDeps());
+    const app = await buildServer(buildDeps());
     const response = await app.inject({ method: 'GET', url: '/does-not-exist' });
     expect(response.statusCode).toBe(404);
   });

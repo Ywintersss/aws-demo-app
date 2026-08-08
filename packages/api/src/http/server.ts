@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyStatic from '@fastify/static';
 import type { AuthProvider } from '../ports/index.js';
 import type { Db } from '../adapters/persistence/postgres/pool.js';
 import type { PatientService } from '../services/patientService.js';
@@ -31,7 +32,7 @@ export type ServerDeps = {
   staticRoot?: string;
 };
 
-export const buildServer = (deps: ServerDeps): FastifyInstance => {
+export const buildServer = async (deps: ServerDeps): Promise<FastifyInstance> => {
   const fastify = Fastify({ logger: true, disableRequestLogging: true });
 
   fastify.decorateRequest('principal', undefined);
@@ -42,6 +43,17 @@ export const buildServer = (deps: ServerDeps): FastifyInstance => {
     reply.header('X-AZ', deps.availabilityZone);
     return payload;
   });
+
+  if (deps.serveStatic && deps.staticRoot !== undefined) {
+    await fastify.register(fastifyStatic, { root: deps.staticRoot });
+    fastify.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith('/api/') || request.url === '/health') {
+        reply.code(404).send({ code: 'NOT_FOUND', message: 'Route not found' });
+        return;
+      }
+      reply.sendFile('index.html');
+    });
+  }
 
   const requireAuth = createRequireAuth(deps.authProvider);
 
