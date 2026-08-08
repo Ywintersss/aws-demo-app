@@ -1,0 +1,98 @@
+name: Build and Push API Image to ECR
+
+# Manual only. A Learner Lab session may not be active (or its credentials
+# may have expired) when a commit lands, so a push/PR trigger would just
+# fail most of the time on stale or absent secrets. Trigger this by hand
+# from the Actions tab after pasting fresh session credentials — see the
+# "CI/CD: manual build-and-push pipeline" section in docs/RUNBOOK.md.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 761298193478.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: 761298193478.dkr.ecr.us-east-1.amazonaws.com/aethelgard-demo
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Learner Lab session credentials are present
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+        run: |
+          missing=()
+          [ -z "$AWS_ACCESS_KEY_ID" ] && missing+=("AWS_ACCESS_KEY_ID")
+          [ -z "$AWS_SECRET_ACCESS_KEY" ] && missing+=("AWS_SECRET_ACCESS_KEY")
+          [ -z "$AWS_SESSION_TOKEN" ] && missing+=("AWS_SESSION_TOKEN")
+          if [ ${#missing[@]} -gt 0 ]; then
+            for name in "${missing[@]}"; do
+              echo "::error::${name} secret is empty — has the Learner Lab session credential been refreshed for today? Paste fresh values into Settings → Secrets and variables → Actions → repository secrets, then re-run this workflow."
+            done
+            exit 1
+          fi
+          echo "All three AWS credential secrets are present."
+
+      - name: Configure AWS credentials (Learner Lab session)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compute short SHA tag
+        id: vars
+        run: echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build API prod image
+        run: |
+          docker buildx build \
+            -f docker/api.Dockerfile \
+            --target prod \
+            -t "$ECR_REPOSITORY:latest" \
+            -t "$ECR_REPOSITORY:${{ steps.vars.outputs.sha_short }}" \
+            --load \
+            .
+
+      - name: Push image to ECR
+        run: |
+          docker push "$ECR_REPOSITORY:latest"
+          docker push "$ECR_REPOSITORY:${{ steps.vars.outputs.sha_short }}"
+
+      - name: Write workflow summary
+        run: |
+          {
+            echo "### Pushed to ECR"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Repository | \`$ECR_REPOSITORY\` |"
+            echo "| Tags pushed | \`latest\`, \`${{ steps.vars.outputs.sha_short }}\` |"
+            echo "| Image URI (latest) | \`$ECR_REPOSITORY:latest\` |"
+            echo "| Image URI (sha) | \`$ECR_REPOSITORY:${{ steps.vars.outputs.sha_short }}\` |"
+            echo ""
+            echo "ECS's scheduler picks up a newly pushed \`:latest\` on its next task"
+            echo "placement automatically — no forced redeployment step was run by this"
+            echo "workflow. To pin compute to the SHA-tagged image instead, run:"
+            echo ""
+            echo '```'
+            echo "terraform apply -var-file=environments/learnerlab.tfvars -var=\"image_tag=${{ steps.vars.outputs.sha_short }}\""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

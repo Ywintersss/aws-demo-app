@@ -32,6 +32,52 @@ command above. Nothing else changes.
     terraform output -raw ecr_repository_url
     ./scripts/build-and-push.sh "$(terraform output -raw ecr_repository_url)" v1
 
+### 3a. CI/CD: manual build-and-push pipeline (optional)
+
+`.github/workflows/deploy-ecr.yml` does the same build-and-push as the
+script above, as a one-click GitHub Actions run instead of a local
+`docker build`/`docker push`. This is a Cloud Adoption Framework
+maintenance/improvement practice for the report, not a replacement for the
+manual path — use whichever is convenient. It only builds and pushes the
+API's `prod` image (which also serves the built SPA); it never touches
+`web.Dockerfile`, never runs `terraform apply`, and never forces an ECS
+redeployment — ECS's own scheduler picks up a newly pushed `:latest` tag
+on its next task placement.
+
+Because AWS Academy Learner Lab issues temporary session credentials
+(access key, secret key, session token) rather than a persistent IAM
+user/role, there is no OIDC federation available for GitHub to assume a
+role. The workflow instead reads the session credentials from three
+repository secrets and only ever runs on a manual click, since an
+automatic push/PR trigger would just fail whenever the lab session isn't
+currently open.
+
+**Get fresh session credentials:** in the Learner Lab classroom, click
+**AWS Details** (top left, next to the lab's "Start Lab" button), then
+**Show** under *AWS CLI*. Copy the three values shown there —
+`aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`.
+
+**Paste them into repository secrets:** on GitHub, go to **Settings →
+Secrets and variables → Actions → repository secrets**, and set (create or
+update, using exactly these names):
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN`
+
+**Re-paste before every run.** Learner Lab tokens expire when the lab
+session ends (typically 3-4 hours), and secret values aren't visible again
+once saved — there's no way to check whether they're stale before running.
+If they have expired, the workflow's first step fails immediately with a
+clear message (e.g. `AWS_SESSION_TOKEN secret is empty — has the Learner
+Lab session credential been refreshed for today?`) rather than failing
+later with a confusing `docker login` auth error.
+
+**Trigger it:** GitHub → **Actions** tab → **Build and Push API Image to
+ECR** (left sidebar) → **Run workflow** button → **Run workflow** again to
+confirm. The run's summary page lists the pushed image URI and both tags
+(`latest` and the short commit SHA) once it finishes.
+
 ## 4. Deploy compute
 
     terraform apply -var-file=environments/learnerlab.tfvars -var="image_tag=v1"
