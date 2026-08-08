@@ -4,6 +4,7 @@ import { useAuth } from './auth/AuthContext.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { PatientsPage } from './pages/PatientsPage.js';
 import { PatientDetailPage } from './pages/PatientDetailPage.js';
+import { EncounterPage } from './pages/EncounterPage.js';
 import { ServedByBadge } from './components/ServedByBadge.js';
 
 const RequireAuth = ({ children }: { children: JSX.Element }): JSX.Element => {
@@ -19,7 +20,8 @@ export const App = (): JSX.Element => (
         <Route path="/" element={<Navigate to="/patients" replace />} />
         <Route path="/patients" element={<RequireAuth><PatientsPage /></RequireAuth>} />
         <Route path="/patients/:id" element={<RequireAuth><PatientDetailPage /></RequireAuth>} />
-        {/* /encounters/:id and /infra are added in Tasks 15–16 */}
+        <Route path="/encounters/:id" element={<RequireAuth><EncounterPage /></RequireAuth>} />
+        {/* /infra is added in Task 16 */}
       </Routes>
     </main>
     <ServedByBadge />
