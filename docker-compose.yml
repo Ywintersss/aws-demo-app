@@ -6,9 +6,9 @@ services:
       POSTGRES_USER: aethelgard
       POSTGRES_PASSWORD: aethelgard
     ports:
-      - '5432:5432'
+      - "5432:5432"
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U aethelgard']
+      test: ["CMD-SHELL", "pg_isready -U aethelgard"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -20,15 +20,15 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
       target: dev
+    env_file: .env
     environment:
+      # Overrides the .env values that must differ inside Docker (DB host is the
+      # postgres service, not localhost). Everything else comes from .env.
       DATABASE_URL: postgresql://aethelgard:aethelgard@postgres:5432/aethelgard
-      JWT_SECRET: dev-only-secret-change-me
-      IDENTITY_DRIVER: local
-      PORT: '3000'
-      LOG_LEVEL: info
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
     ports:
-      - '3000:3000'
-      - '9229:9229'
+      - "3000:3000"
+      - "9229:9229"
     volumes:
       - .:/app
       - aethelgard-api-node-modules:/app/node_modules
@@ -44,7 +44,7 @@ services:
     environment:
       VITE_API_PROXY_TARGET: http://api:3000
     ports:
-      - '5173:5173'
+      - "5173:5173"
     volumes:
       - .:/app
       - aethelgard-web-node-modules:/app/node_modules
