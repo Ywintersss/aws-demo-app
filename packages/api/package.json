@@ -12,7 +12,8 @@
     "test:unit": "vitest run",
     "test:db": "vitest run --config vitest.db.config.ts",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx --env-file=../../.env src/scripts/seed.ts"
+    "seed": "tsx --env-file=../../.env src/scripts/seed.ts",
+    "load-test": "tsx src/scripts/loadTest.ts"
   },
   "dependencies": {
     "@aethelgard/shared": "*",

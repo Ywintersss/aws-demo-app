@@ -112,9 +112,28 @@ publicly accessible).
       curl -s -o /dev/null -D - "http://$(terraform output -raw alb_dns_name)/health" | grep -i x-served-by
     done
 
-Then, from the `/infra` page in the browser, use "Burn CPU" repeatedly (or
-a small loop of the load endpoint) while watching the ECS service's running
-task count in the console — this is Section E's scale-out/scale-in evidence.
+Then drive sustained load for Section E's scale-out/scale-in evidence:
+
+    npm run load-test -- --url "$(terraform output -raw alb_dns_name)" --minutes 3
+
+Watch the ECS service's running task count in the console while it runs.
+
+**Do not use the `/infra` page's "Burn CPU" button for this.** Clicking it by
+hand cannot trigger scale-out, and the reason is worth understanding before
+you rely on it live. `ECSServiceAverageCPUUtilization` averages across every
+task in the service. The API is single-threaded and each Fargate task is
+0.25 vCPU, so one in-flight burn pins exactly one task — with 2 tasks running
+that is a ~50% service average, which sits *at* the scaling target and never
+above it. Target tracking also needs the metric held above target across
+roughly three consecutive 1-minute datapoints. The button is a
+"what this endpoint does" demonstration; the script is the evidence.
+
+The script's defaults (4 workers, 1500ms burns, 250ms pause) are deliberately
+gentle. The burn blocks the event loop, so a task cannot answer `/health`
+while burning — pushing concurrency much higher queues burns ahead of the
+health check, breaches the ALB's 5s timeout, and gets healthy tasks
+deregistered and replaced, which destroys the evidence you are trying to
+capture.
 
 ## 8. Tear down
 
